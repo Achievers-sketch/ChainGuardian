@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { QrCode, Factory } from 'lucide-react';
 import Image from 'next/image';
+import { register } from '@/lib/actions';
 
 const formSchema = z.object({
   productName: z.string().min(3, 'Product name must be at least 3 characters.'),
@@ -73,13 +74,17 @@ export default function ProductsPage() {
     setStep('confirm');
   }
   
-  function handleMint() {
+  async function handleMint() {
+    if (!formData) return;
+
     toast({
       title: 'Minting Product NFT',
       description: 'Your product is being registered on the blockchain...',
     });
 
-    setTimeout(() => {
+    const result = await register(formData);
+
+    if (result.success) {
       toast({
         title: '✅ Success!',
         description: 'Product registered and NFT certificate minted.',
@@ -87,7 +92,13 @@ export default function ProductsPage() {
       setStep('details');
       form.reset();
       setFormData(null);
-    }, 2000);
+    } else {
+      toast({
+        title: 'Uh oh! Something went wrong.',
+        description: result.message,
+        variant: 'destructive',
+      });
+    }
   }
 
   return (

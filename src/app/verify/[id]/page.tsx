@@ -1,22 +1,69 @@
-import { mockProducts, unregisteredProduct } from "@/lib/mock-data";
+'use client';
+
+import { useEffect, useState } from 'react';
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, ShieldAlert, Clock, Calendar, Hash, Package, Factory, AlertTriangle } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Clock, Calendar, Hash, Package, Factory, AlertTriangle, Loader2 } from "lucide-react";
 import ProductTimeline from "@/components/verify/product-timeline";
 import TemperatureChart from "@/components/verify/temperature-chart";
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
+import { fetchProduct } from '@/lib/actions';
+import { Product } from '@/lib/types';
 
 export default function VerifyPage({ params }: { params: { id: string } }) {
-  const product = mockProducts.find(p => p.id === params.id) || (params.id === 'unregistered-fake-oil' ? unregisteredProduct : null);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isAuthentic, setIsAuthentic] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!product) {
-    notFound();
+  useEffect(() => {
+    async function getProduct() {
+      setIsLoading(true);
+      const result = await fetchProduct(params.id);
+      if (result.success && result.data) {
+        setProduct(result.data);
+        setIsAuthentic(true);
+      } else {
+        setIsAuthentic(false);
+      }
+      setIsLoading(false);
+    }
+    getProduct();
+  }, [params.id]);
+
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
   }
 
-  const isAuthentic = product.id !== 'unregistered-fake-oil';
-  const expiryDate = isAuthentic ? new Date(product.expiryDate) : null;
+  if (isAuthentic === false) {
+     return (
+      <div className="max-w-4xl mx-auto space-y-8">
+        <Card className="overflow-hidden">
+          <CardHeader className='p-6 bg-destructive/5'>
+            <div className="flex flex-col md:flex-row gap-6 items-center">
+              <ShieldAlert className="h-16 w-16 text-destructive flex-shrink-0" />
+              <div>
+                <h1 className='text-3xl font-bold font-headline text-destructive'>
+                  Counterfeit Warning
+                </h1>
+                <CardDescription className="text-base">
+                  This product is NOT registered. It is likely counterfeit. DO NOT USE.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  
+  if (!product) {
+      notFound();
+  }
+
+  const expiryDate = product ? new Date(product.expiryDate) : null;
   const daysToExpiry = expiryDate ? differenceInDays(expiryDate, new Date()) : 0;
 
   const getExpiryBadge = () => {
@@ -91,7 +138,7 @@ export default function VerifyPage({ params }: { params: { id: string } }) {
                 </CardContent>
             </Card>
 
-            {product.supplyChain.length > 0 && (
+            {product.supplyChain && product.supplyChain.length > 0 && (
                 <Card>
                     <CardHeader><CardTitle>Supply Chain Journey</CardTitle></CardHeader>
                     <CardContent>

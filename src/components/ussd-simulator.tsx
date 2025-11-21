@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { mockProducts } from '@/lib/mock-data';
+import { fetchProduct } from '@/lib/actions';
 import { Send, Delete, Star, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Product } from '@/lib/types';
 
 type Screen = 'HOME' | 'MENU' | 'PROMPT_CODE' | 'VERIFYING' | 'RESULT';
 
@@ -38,15 +39,17 @@ const UssdSimulator = () => {
 
   useEffect(() => {
     if (screen === 'VERIFYING') {
-      setTimeout(() => {
-        const product = mockProducts.find((p) => p.id === productCode);
-        if (product) {
+      const verifyProduct = async () => {
+        const res = await fetchProduct(productCode);
+        if (res.success && res.data) {
+          const product = res.data as Product;
           setResult(`Product: ${product.name} is AUTHENTIC. Batch: ${product.batchNumber}. Expires: ${new Date(product.expiryDate).toLocaleDateString()}`);
         } else {
           setResult('Product not found. LIKELY COUNTERFEIT. Do not use. Report this product.');
         }
         setScreen('RESULT');
-      }, 1500);
+      };
+      verifyProduct();
     }
   }, [screen, productCode]);
   
